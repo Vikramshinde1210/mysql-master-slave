@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mysql-master:
+    image: mysql:8.0
+    container_name: mysql-master
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+    ports:
+      - "3306:3306"
+    command: --server-id=1 --log-bin=mysql-bin --default-authentication-plugin=mysql_native_password
+    volumes:
+      - master_data:/var/lib/mysql
+
+  mysql-replica:
+    image: mysql:8.0
+    container_name: mysql-replica
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: testdb
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpassword
+    ports:
+      - "3307:3306"
+    command: --server-id=2 --relay-log=mysql-relay-bin --default-authentication-plugin=mysql_native_password
+    depends_on:
+      - mysql-master
+    volumes:
+      - replica_data:/var/lib/mysql
+
+  node-app:
+    build: .
+    container_name: node-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST_MASTER: "mysql-master"
+      DB_PORT_MASTER: "3306"
+      DB_HOST_REPLICA: "mysql-replica"
+      DB_PORT_REPLICA: "3306"
+      DB_USER: "user"
+      DB_PASSWORD: "userpassword"
+      DB_NAME: "testdb"
+    depends_on:
+      - mysql-master
+      - mysql-replica
+
+volumes:
+  master_data:
+  replica_data:
